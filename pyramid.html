@@ -1,0 +1,264 @@
+<!doctype html>
+<html>
+
+<head>
+
+    <title>pyramid</title>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+
+    <script language="javascript" type="text/javascript" src="simplex-noise.min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-size: 0;
+            font-family: sans-serif;
+            color: #fff;
+            background-color: #000;
+            user-select: none;
+        }
+
+        stage,
+        svg,
+        path {
+            position: fixed;
+            overflow: visible;
+        }
+    </style>
+
+</head>
+
+<body>
+</body>
+
+<script>
+
+    //CODE
+
+    let twrk = {};
+
+
+    //COORDINATES
+
+    twrk.scale = function ({ width, height }) {
+        if (width) {
+            twrk.width = width;
+            twrk.res = window.innerWidth / twrk.width;
+            twrk.height = window.innerHeight / twrk.res;
+        } else if (height) {
+            twrk.height = height;
+            twrk.res = window.innerHeight / twrk.height;
+            twrk.width = window.innerWidth / twrk.res;
+        }
+        twrk.center = { x: twrk.width / 2, y: twrk.height / 2 };
+    }
+    twrk.scale({ height: 120 });
+
+
+    //SVG
+
+    let svg = {};
+
+    svg.nameSpace = "http://www.w3.org/2000/svg";
+
+    svg.path = function (ia) {
+        let output = "M ";
+        for (var i = 0; i < ia.length; i++) {
+            output += ia[i].x * twrk.res + " " + ia[i].y * twrk.res + " ";
+        }
+        output += "z";
+        return output;
+    };
+
+    svg.paths = function (ia) {
+        let output = "";
+        for (var i = 0; i < ia.length; i++) {
+            output += svg.path(ia[i]);
+        }
+        return output;
+    };
+
+    svg.makeLayer = function ({ parent, id, x = 0, y = 0 }) {
+        dom[id] = document.createElementNS(svg.nameSpace, "svg");
+        dom[id].id = id;
+        dom[id].style.transform = "translateX(" + (x * twrk.res) + "px) translateY(" + (y * twrk.res) + "px)";
+        parent.appendChild(dom[id]);
+    };
+
+    svg.makeLine = function ({ parent, id, d = "", color = "#ff00ff", stroke = 1, cap = "butt", join = "round" }) {
+        dom[id] = document.createElementNS(svg.nameSpace, "path");
+        dom[id].setAttributeNS(null, "fill", "none");
+        dom[id].setAttributeNS(null, "d", d);
+        dom[id].setAttributeNS(null, "stroke-width", stroke * twrk.res);
+        dom[id].setAttributeNS(null, "stroke", color);
+        dom[id].setAttributeNS(null, "stroke-linecap", cap);
+        dom[id].setAttributeNS(null, "stroke-join", join);
+        dom[id].id = id;
+        parent.appendChild(dom[id]);
+    };
+
+    svg.makeShape = function ({ parent, id, d = "", color = "#ff00ff" }) {
+        dom[id] = document.createElementNS(svg.nameSpace, "path");
+        dom[id].setAttributeNS(null, "fill", color);
+        dom[id].setAttributeNS(null, "d", d);
+        dom[id].id = id;
+        parent.appendChild(dom[id]);
+    };
+
+
+    //PHYSICS
+    let physics = {};
+
+    physics.makePoint = function ({ id, position , parent, drag = 0.999 }) {
+        parent[id] = {
+            id: id,
+            position: position,
+            acceleration: { x: 0, y: 0 },
+            drag: drag
+        };
+    };
+
+    physics.calculate = function ({ point, force = { x: 0, y: 0 } }) {
+
+        point.acceleration = { x: point.acceleration.x * point.drag, y: point.acceleration.y * point.drag };
+        point.acceleration = { x: point.acceleration.x, y: point.acceleration.y + force.y };
+        point.position = { x: point.position.x + point.acceleration.x, y: point.position.y + point.acceleration.y };
+
+    };
+
+    physics.verlet = function ({ a, b, distance = 400, stiffness = 0.06 }) {
+
+        let difference = { x: a.position.x - b.position.x, y: a.position.y - b.position.y };
+        let dot = (difference.x * difference.x) + (difference.y * difference.y);
+
+        if (dot == 0) dot = 0.001; // 0 creates NaN
+
+        let scalar = (distance - dot) / dot * stiffness * 0.99;
+        let move = { x: difference.x * scalar, y: difference.y * scalar };
+
+        a.position = { x: a.position.x + move.x, y: a.position.y + move.y };
+        b.position = { x: b.position.x -move.x, y: b.position.y - move.y };
+
+    };
+
+    let dots = {};
+
+    physics.makePoint({ id: "s1", position: { x: 0, y: -100 }, parent: dots });
+    physics.makePoint({ id: "s2", position: { x: 0, y: -60 }, parent: dots });
+    physics.makePoint({ id: "s3", position: { x: 0, y: -30 }, parent: dots });
+
+    physics.makePoint({ id: "a", position: { x: -20, y: -10 }, parent: dots });
+    physics.makePoint({ id: "b", position: { x: 20, y: -20 }, parent: dots });
+    physics.makePoint({ id: "c", position: { x: -50, y: -40 }, parent: dots });
+    physics.makePoint({ id: "d", position: { x: 0, y: -40 }, parent: dots });
+
+    console.log(dots[1])
+    //DOM
+
+    let dom = {};
+
+    //stage
+    dom.stage = document.createElement("stage");
+    dom.stage.style.transform = "translateX(" + (twrk.center.x * twrk.res) + "px) translateY(" + (twrk.center.y * twrk.res) + "px)";
+    dom.stage.id = "stage";
+    document.body.appendChild(dom.stage);
+
+    //svg layer
+    svg.makeLayer({ parent: dom.stage, id: "svgLayer", x: 0, y: 0 });
+
+    //Triangle1
+    svg.makeShape({ parent: dom.svgLayer, id: "triangle1", color: "hsl(197, 100%, 20%)" });
+    
+
+    //Triangle2
+    svg.makeShape({ parent: dom.svgLayer, id: "triangle2", color: "hsl(197, 100%, 50%)" });
+
+    //Triangle3
+    svg.makeShape({ parent: dom.svgLayer, id: "triangle3", color: "hsl(197, 100%, 100%)" });
+
+
+    // //String1
+    // svg.makeLine({ parent: dom.svgLayer, id: "string1", color: "#fff" });
+
+    // //String2
+    // svg.makeLine({ parent: dom.svgLayer, id: "string2", stroke: 1, cap: "round", color: "#fff" });
+
+    // //String3
+    // svg.makeLine({ parent: dom.svgLayer, id: "string3", color: "#fff" });
+
+    //dots
+    // svg.makeLine({ parent: dom.svgLayer, id: "dots", cap: "round", stroke: 3, color: "#fff", d: "" });
+
+    function loop() {
+
+        let collect = [];
+
+        // physics.verlet({ a: dots.s1, b: dots.s2, distance: 50, stiffness: 0.3 });
+        // physics.verlet({ a: dots.s2, b: dots.s3, stiffness: 0.3 });
+        // physics.verlet({ a: dots.s3, b: dots.d});
+
+
+        physics.verlet({ a: dots.a, b: dots.b, distance: 500, stiffness: 0.3 });
+        physics.verlet({ a: dots.b, b: dots.c, distance: 500, stiffness: 0.3 });
+        physics.verlet({ a: dots.c, b: dots.a, distance: 500, stiffness: 0.3});
+
+        physics.verlet({ a: dots.a, b: dots.d, distance: 0, stiffness: 0.1 });
+        physics.verlet({ a: dots.b, b: dots.d, distance: 0, stiffness: 0.1 });
+        physics.verlet({ a: dots.c, b: dots.d, distance: 0, stiffness: 0.1 });
+
+
+
+
+
+        for (let id in dots) {
+
+            let dot = dots[id];
+
+            physics.calculate({ point: dot, force: { x: 0.01, y: 0.02 } });
+
+            if (dot.position.y > 0) {
+                dot.acceleration.y = -2;
+            }
+
+            collect.push([dot.position]);
+        }
+
+        // dom.dots.setAttributeNS(null, "d", svg.paths(collect));
+
+        //string 1
+        // let path4 = [dots.s1.position, dots.s2.position ]
+        // dom.string1.setAttributeNS(null, "d", svg.path(path4));
+
+        // //string 2
+        // let path5 = [dots.s2.position, dots.s3.position ]
+        // dom.string2.setAttributeNS(null, "d", svg.path(path5));
+
+        /*triangle 1*/
+        let path1 = [dots.a.position, dots.b.position, dots.c.position ]
+        dom.triangle1.setAttributeNS(null, "d", svg.path(path1));
+
+        /*triangle 2*/
+        let path2 = [dots.a.position, dots.d.position, dots.b.position ]
+        dom.triangle2.setAttributeNS(null, "d", svg.path(path2));
+
+        /*triangle 3*/
+        let path3 = [dots.a.position, dots.d.position, dots.c.position ]
+        dom.triangle3.setAttributeNS(null, "d", svg.path(path3));
+
+        requestAnimationFrame(loop);
+
+    };
+
+    loop();
+
+
+
+
+</script>
+
+</html>
