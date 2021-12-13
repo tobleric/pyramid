@@ -188,16 +188,35 @@
     osci2.connect(gainNode2);
 
     //Audio starten
+    let counter = 0
+
     let audioOn = false;
     document.addEventListener("click", function() {
 
-        if (!audioOn) {
+        if ((!audioOn) || (counter == 0)) {
             constantNode.start();
             osci1.start();
             osci2.start();
             audioOn = true;
         }
+
+
+
+        if( counter > 0) {
+
+            if (counter%2 !== 0) {
+                audioCtx.suspend();
+            } else {
+                audioCtx.resume();
+            }
+        }
+        counter += 1
+        console.log(counter);
     });
+
+    //Audio stoppen
+    // let audioOff = true;
+    // document
 
     //stage
     dom.stage = document.createElement("stage");
