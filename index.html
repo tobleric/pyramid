@@ -162,6 +162,43 @@
 
     let dom = {};
 
+    // Sound
+
+    let audioCtx = new(window.AudioContext || window.webKitAudioContext)();
+
+    let gainNode1 = audioCtx.createGain();
+    let gainNode2 = audioCtx.createGain();
+    let gainNode3 = audioCtx.createGain();
+
+    let constantNode = audioCtx.createConstantSource();
+    constantNode.connect(gainNode1.gain);
+    constantNode.connect(gainNode2.gain);
+
+    gainNode1.connect(audioCtx.destination);
+    gainNode2.connect(audioCtx.destination);
+
+    let osci1 = audioCtx.createOscillator(); //C
+    osci1.type = "triangle";
+    osci1.frequency.value = 130.81;
+    osci1.connect(gainNode1);
+
+    let osci2 = audioCtx.createOscillator(); //E
+    osci2.type = "triangle";
+    osci2.frequency.value = 164.81;
+    osci2.connect(gainNode2);
+
+    //Audio starten
+    let audioOn = false;
+    document.addEventListener("click", function() {
+
+        if (!audioOn) {
+            constantNode.start();
+            osci1.start();
+            osci2.start();
+            audioOn = true;
+        }
+    });
+
     //stage
     dom.stage = document.createElement("stage");
     dom.stage.style.transform = "translateX(" + (twrk.center.x * twrk.res) + "px) translateY(" + (twrk.center.y * twrk.res) + "px)";
@@ -181,27 +218,13 @@
     //Triangle3
     svg.makeShape({ parent: dom.svgLayer, id: "triangle3", color: "hsl(197, 100%, 100%)" });
 
+   
 
-    // //String1
-    // svg.makeLine({ parent: dom.svgLayer, id: "string1", color: "#fff" });
-
-    // //String2
-    // svg.makeLine({ parent: dom.svgLayer, id: "string2", stroke: 1, cap: "round", color: "#fff" });
-
-    // //String3
-    // svg.makeLine({ parent: dom.svgLayer, id: "string3", color: "#fff" });
-
-    //dots
-    // svg.makeLine({ parent: dom.svgLayer, id: "dots", cap: "round", stroke: 3, color: "#fff", d: "" });
 
     function loop() {
 
+
         let collect = [];
-
-        // physics.verlet({ a: dots.s1, b: dots.s2, distance: 50, stiffness: 0.3 });
-        // physics.verlet({ a: dots.s2, b: dots.s3, stiffness: 0.3 });
-        // physics.verlet({ a: dots.s3, b: dots.d});
-
 
         physics.verlet({ a: dots.a, b: dots.b, distance: 500, stiffness: 0.3 });
         physics.verlet({ a: dots.b, b: dots.c, distance: 500, stiffness: 0.3 });
@@ -211,15 +234,17 @@
         physics.verlet({ a: dots.b, b: dots.d, distance: 0, stiffness: 0.1 });
         physics.verlet({ a: dots.c, b: dots.d, distance: 0, stiffness: 0.1 });
 
+        osci1.frequency.value = dots.d.position.y * 4.8;
+        osci2.frequency.value = dots.d.position.y * 15;
 
-
-
+        gainNode1.gain.value = clamp(-1.5, -1.4, dots.d.position.y/30)
+        gainNode2.gain.value = clamp(-1.5, -1.4, dots.d.position.y/30)
 
         for (let id in dots) {
 
             let dot = dots[id];
 
-            physics.calculate({ point: dot, force: { x: 0.01, y: 0.02 } });
+            physics.calculate({ point: dot, force: { x: 0.01, y: 0.01 } });
 
             if (dot.position.y > 0) {
                 dot.acceleration.y = -2;
@@ -228,15 +253,19 @@
             collect.push([dot.position]);
         }
 
-        // dom.dots.setAttributeNS(null, "d", svg.paths(collect));
+        //beschränke lautstärke auf gewisse Werte
+        function clamp(min, max, current) {
+            if (current > max) {
+                return max    
+            }
+            else if(current < min) {
+                return min
+            }
 
-        //string 1
-        // let path4 = [dots.s1.position, dots.s2.position ]
-        // dom.string1.setAttributeNS(null, "d", svg.path(path4));
-
-        // //string 2
-        // let path5 = [dots.s2.position, dots.s3.position ]
-        // dom.string2.setAttributeNS(null, "d", svg.path(path5));
+            else {
+                return current
+            }
+        }
 
         /*triangle 1*/
         let path1 = [dots.a.position, dots.b.position, dots.c.position ]
